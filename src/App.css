@@ -1,0 +1,55 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
+
+body {
+  background-color: #f0f0f0; /* Arrière-plan doux */
+}
+
+.custom-card {
+  max-width: 600px; /* Taille fixe de la carte */
+  width: 100%; /* Responsive */
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Ombre subtile */
+}
+
+h4 {
+  font-family: "Montserrat", sans-serif; /* Police plus moderne */
+  /* font-size: rem; Taille du titre */
+  font-weight: bold;
+  color: #ff914d; /* Couleur primaire (orange attrayant) */
+  text-align: center;
+  background: -webkit-linear-gradient(
+    45deg,
+    #ff914d,
+    #ff5252
+  ); /* Dégradé de couleurs */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; /* Appliquer le dégradé uniquement au texte */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); /* Ombre pour la profondeur */
+  letter-spacing: 2px; /* Espacement des lettres pour plus de lisibilité */
+}
+
+.form-control {
+  padding: 10px;
+  border-radius: 10px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 1rem;
+}
+
+.mt-3 {
+  margin-top: 20px;
+}
+
+.LoginImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-size: cover;
+  min-height: 100vh;
+  background-image: url("./photos/bibliotheque.jpg");
+  /* filter: blur(4px); */
+  backdrop-filter: blur(10px);
+}
