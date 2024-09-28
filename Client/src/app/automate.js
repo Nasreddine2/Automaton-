@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { Modal } from "react-bootstrap";
 
 // Compteur d'état global pour assurer des identifiants uniques
 let stateCounter = 0;
@@ -157,8 +158,109 @@ const plusAutomate = (automate1) => {
   return automate;
 };
 
+// // Fonction pour parser une expression régulière en respectant les priorités et les parenthèses
+// const parseRegex = (regex) => {
+//   const precedence = { "|": 1, ".": 2, "*": 3, "+": 3 };
+//   const operators = [];
+//   const output = [];
+
+//   const isOperator = (char) => ["|", ".", "*", "+"].includes(char);
+
+//   const applyOperator = () => {
+//     const operator = operators.pop();
+//     if (operator === ".") {
+//       const b = output.pop();
+//       const a = output.pop();
+//       output.push([".", a, b]);
+//     } else if (operator === "|") {
+//       const b = output.pop();
+//       const a = output.pop();
+//       output.push(["|", a, b]);
+//     } else if (operator === "*") {
+//       const a = output.pop();
+//       output.push(["*", a]);
+//     } else if (operator === "+") {
+//       const a = output.pop();
+//       output.push(["+", a]);
+//     }
+//   };
+
+//   let i = 0;
+//   while (i < regex.length) {
+//     const char = regex[i];
+
+//     if (char === "(") {
+//       // Trouver la sous-expression entre parenthèses
+//       let j = i;
+//       let openParentheses = 1;
+//       while (openParentheses > 0 && ++j < regex.length) {
+//         if (regex[j] === "(") openParentheses++;
+//         if (regex[j] === ")") openParentheses--;
+//       }
+
+//       // Appeler récursivement `parseRegex` sur la sous-expression
+//       const subexpression = regex.slice(i + 1, j);
+//       output.push(parseRegex(subexpression));
+//       i = j; // Avancer jusqu'à la parenthèse fermante
+//     } else if (!isOperator(char)) {
+//       output.push(char); // Ajouter les symboles au output
+//     } else {
+//       while (
+//         operators.length > 0 &&
+//         operators[operators.length - 1] !== "(" &&
+//         precedence[operators[operators.length - 1]] >= precedence[char]
+//       ) {
+//         applyOperator();
+//       }
+//       operators.push(char);
+//     }
+//     i++;
+//   }
+
+//   // Appliquer les opérateurs restants
+//   while (operators.length > 0) {
+//     applyOperator();
+//   }
+
+//   return output[0];
+// };
+
+// Fonction pour insérer les concaténations implicites dans une regex
+const ajouterConcatImpl = (regex) => {
+  let resultat = "";
+
+  for (let i = 0; i < regex.length; i++) {
+    const char = regex[i];
+    resultat += char;
+
+    // Ajouter une concaténation implicite si nécessaire
+    if (i + 1 < regex.length) {
+      const nextChar = regex[i + 1];
+
+      // Condition pour ajouter une concaténation implicite
+      if (
+        char !== "(" &&
+        char !== "|" &&
+        char !== "." && // Si le caractère actuel n'est pas un opérateur
+        nextChar !== ")" &&
+        nextChar !== "|" &&
+        nextChar !== "*" &&
+        nextChar !== "+" &&
+        nextChar !== "." // Si le prochain caractère n'est pas un opérateur
+      ) {
+        resultat += "."; // Ajouter une concaténation explicite
+      }
+    }
+  }
+
+  return resultat;
+};
+
 // Fonction pour parser une expression régulière en respectant les priorités et les parenthèses
 const parseRegex = (regex) => {
+  // Ajouter les concaténations implicites avant de parser
+  regex = ajouterConcatImpl(regex);
+
   const precedence = { "|": 1, ".": 2, "*": 3, "+": 3 };
   const operators = [];
   const output = [];
@@ -472,7 +574,9 @@ const minimizeAutomate = (dfa) => {
     stable = true;
     const newPartitions = [];
 
-    for (const partition of partitions) {
+    const partitionsCopy = partitions.slice(); // Create a copy of partitions
+
+    for (const partition of partitionsCopy) {
       const partitionMap = new Map();
 
       for (const state of partition) {
@@ -484,7 +588,7 @@ const minimizeAutomate = (dfa) => {
             const targetState = transition ? transition.to : null;
 
             // Trouver la partition contenant l'état cible
-            const partitionIndex = partitions.findIndex((p) =>
+            const partitionIndex = partitionsCopy.findIndex((p) =>
               p.has(targetState)
             );
             return partitionIndex;
@@ -583,6 +687,7 @@ const Automaton = () => {
   const [fileContent, setFileContent] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [show, setshow] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   // Fonction pour générer l'automate (NFA)
   const handleGenerateAutomate = async () => {
@@ -665,57 +770,99 @@ const Automaton = () => {
   }, [MinAutomate]);
 
   return (
-    <div>
-      <Link to="/">HomePage</Link>
-      <h1>Automate avec transitions epsilon</h1>
-      <div className="d-flex gap-3">
-        <label>
-          Regex:
-          <input value={regex} onChange={(e) => setRegex(e.target.value)} />
-        </label>
+    <div className="container py-5">
+      {/* Header */}
+      <div className="mb-4">
+        <Link to="/" className="text-decoration-none text-primary">
+          HomePage
+        </Link>
+      </div>
 
-        {/* Téléchargement du fichier */}
-        <input type="file" onChange={handleFileUpload} accept=".txt" />
+      <h1 className="mb-4">Automate avec transitions epsilon</h1>
 
-        {/* Bouton pour déclencher la recherche */}
-        <button onClick={handleAll}>Rechercher</button>
-      </div>{" "}
-      <h3>Résultats de la recherche :</h3>
-      <ul>
+      {/* Input section */}
+      <div className="row mb-4">
+        <div className="col-md-4">
+          <label className="form-label">
+            Regex:
+            <input
+              value={regex}
+              onChange={(e) => setRegex(e.target.value)}
+              className="form-control"
+            />
+          </label>
+        </div>
+        <div className="col-md-4">
+          <input
+            type="file"
+            onChange={handleFileUpload}
+            accept=".txt"
+            className="form-control"
+          />
+        </div>
+        <div className="col-md-4 d-grid">
+          <button onClick={handleAll} className="btn btn-primary">
+            Rechercher
+          </button>
+        </div>
+      </div>
+
+      {/* Search results */}
+      <h3 className="mb-3">Résultats de la recherche :</h3>
+      <ul className="list-group mb-4">
         {searchResults.map((result, index) => (
-          <li key={index}>{result}</li>
+          <li key={index} className="list-group-item">
+            {result}
+          </li>
         ))}
       </ul>
+
+      {/* Button to trigger modal */}
       <button
-        className="btn shadow-sm"
-        onClick={() => {
-          if (searchResults) setshow(!show);
-        }}
+        className="btn btn-secondary mb-4"
+        onClick={() => setShowModal(true)} // Open modal
       >
         Show Details
       </button>
-      {show && (
-        <>
+
+      {/* Modal for showing details */}
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header>
+          <Modal.Title>Details</Modal.Title>
+          {/* Close button in the top right */}
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setShowModal(false)}
+          ></button>
+        </Modal.Header>
+        <Modal.Body>
+          {/* Conditional rendering for details inside modal */}
           {automate && (
-            <>
+            <div className="mb-4">
               <h2>Automate (NFA)</h2>
               <AutomateVisualizer automate={automate} />
-            </>
+            </div>
           )}
           {detAutomate && (
-            <>
+            <div className="mb-4">
               <h2>Automate Déterminisé (DFA)</h2>
               <AutomateVisualizer automate={detAutomate} />
-            </>
+            </div>
           )}
           {MinAutomate && (
-            <>
-              <h2>Automate Minimiser (Min)</h2>
+            <div className="mb-4">
+              <h2>Automate Minimisé (Min)</h2>
               <AutomateVisualizer automate={MinAutomate} />
-            </>
+            </div>
           )}
-        </>
-      )}
+        </Modal.Body>
+      </Modal>
     </div>
   );
 };
