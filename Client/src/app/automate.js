@@ -301,9 +301,76 @@ const parseArbre = (arbre) => {
   }
 };
 
+//
+
+//
+
+// Fonction pour construire le tableau CarryOver à partir du motif (pattern)
+function computeCarryOver(pattern) {
+  const n = pattern.length;
+  const carryOver = new Array(n).fill(0); // Initialiser le tableau avec des zéros
+  let i = 1;
+  let j = 0; // Index pour le plus long préfixe suffixe
+
+  carryOver[0] = -1; // Convention KMP, le premier élément est -1
+
+  while (i < n) {
+    if (pattern[i] === pattern[j]) {
+      j++;
+      carryOver[i] = j;
+      i++;
+    } else {
+      if (j !== 0) {
+        j = carryOver[j - 1];
+      } else {
+        carryOver[i] = 0;
+        i++;
+      }
+    }
+  }
+
+  return carryOver;
+}
+
+// Fonction pour rechercher le motif dans le texte en utilisant le tableau CarryOver
+function KMPsearch(text, pattern) {
+  const carryOver = computeCarryOver(pattern);
+  let i = 0; // Index pour le texte
+  let j = 0; // Index pour le motif
+  console.log(text.length);
+  while (i < text.length) {
+    if (pattern[j] === text[i]) {
+      i++;
+      j++;
+      console.log("patterne", pattern[j]);
+      console.log("texte", text[i]);
+    }
+
+    if (j === pattern.length) {
+      // Motif trouvé, retourner vrai
+      return true;
+    } else if (i < text.length && pattern[j] !== text[i]) {
+      if (j !== 0) {
+        j = carryOver[j - 1];
+      } else {
+        i++;
+      }
+    }
+  }
+  // Si on sort de la boucle sans correspondance, retourner faux
+  return false;
+}
+
+//
+
+//
+
+//
+
 // Fonction pour générer l'automate à partir d'une expression régulière
 const construireAutomate = (regex) => {
   const arbre = parseRegex(regex); // Construire l'arbre syntaxique à partir du regex
+
   return parseArbre(arbre); // Construire l'automate à partir de l'arbre syntaxique
 };
 
@@ -611,17 +678,101 @@ const AutomateVisualizer = ({ automate }) => {
   );
 };
 
+const SyntaxTree = ({ node }) => {
+  // Si le node est une feuille (une string ou un élément simple), on l'affiche directement
+  if (typeof node === "string") {
+    return <span>{node}</span>;
+  }
+
+  // Si le node est une liste, on affiche l'élément 0 (parent), et les enfants 1 et 2 (fils gauche et droit)
+  const [parent, leftChild, rightChild] = node;
+
+  return (
+    <div
+      style={{ textAlign: "center", margin: "20px", display: "inline-block" }}
+    >
+      {/* Affichage du parent */}
+      <div>{parent}</div>
+
+      {/* Connecteurs entre parent et enfants */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        {leftChild && (
+          <div style={{ width: "50%", borderBottom: "1px solid black" }}></div>
+        )}
+        {rightChild && (
+          <div style={{ width: "50%", borderBottom: "1px solid black" }}></div>
+        )}
+      </div>
+
+      {/* Conteneur pour les enfants */}
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        {/* Fils gauche */}
+        {leftChild && (
+          <div style={{ marginRight: "10px", paddingTop: "10px" }}>
+            <SyntaxTree node={leftChild} />
+          </div>
+        )}
+        {/* Fils droit */}
+        {rightChild && (
+          <div style={{ marginLeft: "10px", paddingTop: "10px" }}>
+            <SyntaxTree node={rightChild} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Composant principal de l'application
 const Automaton = () => {
+  const [arbre, setArbre] = useState(null); // Arbre syntaxique
   const [automate, setAutomate] = useState(null); // Automate (NFA ou DFA)
   const [detAutomate, setDetAutomate] = useState(null); // Automate déterminisé (DFA)
   const [MinAutomate, setMinAutomate] = useState(null); // Automate Min (Min)
   const [regex, setRegex] = useState("");
   const [fileContent, setFileContent] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  const [show, setshow] = useState(false);
+  const [kmp, setKmp] = useState([]);
+  const [searchkmp, setSearchKmp] = useState(false);
+  const [searchAutomate, setSearchAutomate] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
+  const isKmp = () => {
+    if (regex.length > 0) {
+      if (
+        regex.includes("|") ||
+        regex.includes("*") ||
+        regex.includes("+") ||
+        regex.includes(".") ||
+        regex.includes("(") ||
+        regex.includes(")") ||
+        regex.includes("ε")
+      ) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  };
+
+  // Fonction pour générer l'arbre syntaxique à partir de l'expression régulière
+  const handleGenerateArbre = async () => {
+    return new Promise((resolve) => {
+      stateCounter = 0; // Réinitialiser le compteur d'état pour chaque nouveau calcul
+      const arbre = parseRegex(regex); // Générer l'automate à partir de l'expression régulière
+      setArbre(arbre); // Stocker l'arbre syntaxique
+      setAutomate(null); // Réinitialiser l'automate NFA
+      setDetAutomate(null); // Réinitialiser l'automate déterminisé (DFA)
+      setMinAutomate(null); // Réinitialiser l'automate minimisé
+      resolve(); // Marquer la fonction comme terminée
+    });
+  };
   // Fonction pour générer l'automate (NFA)
   const handleGenerateAutomate = async () => {
     return new Promise((resolve) => {
@@ -676,12 +827,44 @@ const Automaton = () => {
     setSearchResults(results);
   };
 
-  const handleAll = async () => {
-    await handleGenerateAutomate(); // Attendre que l'automate soit généré
-    await handleDeterminizeAutomate(); // Attendre que l'automate soit déterminisé
-    await handleMinimizeAutomate(); // Attendre que l'automate soit minimisé
-    handleSearch(); // Ensuite, rechercher dans le fichier
+  // Fonction de recherche utilisant KMP
+  const handleSearchKMP = () => {
+    if (!kmp) return;
+
+    const lines = fileContent.split("\n"); // Diviser le contenu du fichier par ligne
+    console.log("test1");
+    const results = lines.filter((line) => KMPsearch(line, regex)); // Rechercher les lignes qui correspondent
+    console.log("test1");
+    setSearchResults(results);
   };
+
+  const handleAll = async () => {
+    if (!regex) return;
+    await handleGenerateArbre(); // Attendre que l'arbre soit généré
+    if (isKmp()) {
+      console.log("KMP");
+      setSearchKmp(true);
+      setSearchAutomate(false);
+      handleSearchKMP();
+    } else {
+      setSearchKmp(false);
+      setSearchAutomate(true);
+      await handleGenerateAutomate(); // Attendre que l'automate soit généré
+      await handleDeterminizeAutomate(); // Attendre que l'automate soit déterminisé
+      await handleMinimizeAutomate(); // Attendre que l'automate soit minimisé
+      handleSearch(); // Ensuite, rechercher dans le fichier
+    }
+  };
+
+  // Utiliser useEffect pour Savoir si KMP ou Automate
+  useEffect(() => {
+    if (regex) {
+      if (regex === "") {
+        setSearchKmp(false);
+        setSearchAutomate(false);
+      }
+    }
+  }, [regex]);
 
   // Utiliser useEffect pour déclencher les étapes successives
   useEffect(() => {
@@ -741,61 +924,120 @@ const Automaton = () => {
       </div>
 
       {/* Search results */}
-      <h3 className="mb-3">Résultats de la recherche :</h3>
-      <ul className="list-group mb-4">
-        {searchResults.map((result, index) => (
-          <li key={index} className="list-group-item">
-            {result}
-          </li>
-        ))}
-      </ul>
 
-      {/* Button to trigger modal */}
-      <button
-        className="btn btn-secondary mb-4"
-        onClick={() => setShowModal(true)} // Open modal
-      >
-        Show Details
-      </button>
-
-      {/* Modal for showing details */}
-      <Modal
-        show={showModal}
-        onHide={() => setShowModal(false)}
-        size="lg"
-        centered
-      >
-        <Modal.Header>
-          <Modal.Title>Details</Modal.Title>
-          {/* Close button in the top right */}
+      {searchkmp ? (
+        <div>
+          {" "}
+          {/* Button to trigger modal */}
           <button
-            type="button"
-            className="btn-close"
-            onClick={() => setShowModal(false)}
-          ></button>
-        </Modal.Header>
-        <Modal.Body>
-          {/* Conditional rendering for details inside modal */}
-          {automate && (
-            <div className="mb-4">
-              <h2>Automate (NFA)</h2>
-              <AutomateVisualizer automate={automate} />
-            </div>
-          )}
-          {detAutomate && (
-            <div className="mb-4">
-              <h2>Automate Déterminisé (DFA)</h2>
-              <AutomateVisualizer automate={detAutomate} />
-            </div>
-          )}
-          {MinAutomate && (
-            <div className="mb-4">
-              <h2>Automate Minimisé (Min)</h2>
-              <AutomateVisualizer automate={MinAutomate} />
-            </div>
-          )}
-        </Modal.Body>
-      </Modal>
+            className="btn btn-secondary mb-4"
+            onClick={() => setShowModal(true)} // Open modal
+          >
+            Show Details
+          </button>
+          <h3 className="mb-3">
+            Résultats de la recherche : L'algorithme Knuth-Morris-Pratt (KMP)
+          </h3>
+          <ul className="list-group mb-4">
+            {searchResults.map((result, index) => (
+              <li key={index} className="list-group-item">
+                {result}
+              </li>
+            ))}
+          </ul>
+          {/* Modal for showing details */}
+          <Modal
+            show={showModal}
+            onHide={() => setShowModal(false)}
+            size="lg"
+            centered
+          >
+            <Modal.Header>
+              <Modal.Title>Details</Modal.Title>
+              {/* Close button in the top right */}
+              <button
+                type="button"
+                className="btn-close"
+                onClick={() => setShowModal(false)}
+              ></button>
+            </Modal.Header>
+            <Modal.Body>
+              {arbre && (
+                <div className="mb-4">
+                  <h2>Carry Over</h2>
+                </div>
+              )}
+            </Modal.Body>
+          </Modal>
+        </div>
+      ) : null}
+      {searchAutomate ? (
+        <div>
+          {" "}
+          {/* Button to trigger modal */}
+          <button
+            className="btn btn-secondary mb-4"
+            onClick={() => setShowModal(true)} // Open modal
+          >
+            Show Details
+          </button>
+          <h3 className="mb-3">Résultats de la recherche : Automaton</h3>
+          <ul className="list-group mb-4">
+            {searchResults.map((result, index) => (
+              <li key={index} className="list-group-item">
+                {result}
+              </li>
+            ))}
+          </ul>
+          {/* Modal for showing details */}
+          <Modal
+            show={showModal}
+            onHide={() => setShowModal(false)}
+            size="lg"
+            centered
+          >
+            <Modal.Header>
+              <Modal.Title>Details</Modal.Title>
+              {/* Close button in the top right */}
+              <button
+                type="button"
+                className="btn-close"
+                onClick={() => setShowModal(false)}
+              ></button>
+            </Modal.Header>
+            <Modal.Body>
+              {arbre && (
+                <div className="mb-4">
+                  <h2>Arbre syntaxique</h2>
+                  <SyntaxTree node={arbre} />
+                  <div>{JSON.stringify(arbre, null, 3)}</div>
+                </div>
+              )}
+              <hr />
+              {automate && (
+                <div className="mb-4">
+                  <h2>Automate (NFA)</h2>
+                  <AutomateVisualizer automate={automate} />
+                </div>
+              )}
+              <hr />
+              {detAutomate && (
+                <div className="mb-4">
+                  <h2>Automate Déterminisé (DFA)</h2>
+                  <AutomateVisualizer automate={detAutomate} />
+                </div>
+              )}
+              <hr />
+              {MinAutomate && (
+                <div className="mb-4">
+                  <h2>Automate Minimisé (Min)</h2>
+                  <AutomateVisualizer automate={MinAutomate} />
+                </div>
+              )}
+            </Modal.Body>
+          </Modal>
+        </div>
+      ) : null}
     </div>
   );
 };
