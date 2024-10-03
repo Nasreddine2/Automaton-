@@ -81,7 +81,10 @@ const BookList = () => {
         <Sidebar onLanguageSelect={handleLanguageSelect} />
         <div class="content sidebar-offcanvas">
           <Navbar SelectedSearch={handleSearch} />
-          <div className="content-wrapper">
+          <div
+            className="content-wrapper"
+            style={{ backgroundColor: "#f0f0f0" }}
+          >
             {/* Main Content */}
             <div className="container-fluid pt-4 px-4">
               <div className="row">

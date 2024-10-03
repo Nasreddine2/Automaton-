@@ -22,12 +22,12 @@ function Navbar({ SelectedSearch }) {
       className="navbar navbar-expand bg-white navbar-white sticky-top px-4 pb-2 pt-2 py-0 gap-3 justify-content-between"
     >
       {/* Bouton pour cacher la sidebar, ajouté ici dans le contenu principal */}
-      <div className="d-flex w-50">
+      <div cbme="d-flex w-50">
         <button
-          className=" p-4 textprimary border-0 sidebar-toggler flex-shrink-0"
+          className=" p-4 textprimary border-0 sidebar-toggler flex-shrink-0 "
           onClick={() => toggleOffcanvas()}
         >
-          toggle
+          <i className="fas fa-bars"></i>
         </button>{" "}
       </div>
       <div className="d-flex w-50 gap-3">

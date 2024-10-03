@@ -92,7 +92,7 @@ html {
   z-index: 999;
 }
 
-@media (min-width: 800px) {
+@media (min-width: 300px) {
   .sidebar {
     margin-left: 0;
   }
