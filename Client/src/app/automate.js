@@ -305,61 +305,85 @@ const parseArbre = (arbre) => {
 
 //
 
-// Fonction pour construire le tableau CarryOver à partir du motif (pattern)
-function computeCarryOver(pattern) {
-  const n = pattern.length;
-  const carryOver = new Array(n).fill(0); // Initialiser le tableau avec des zéros
+ // Fonction pour calculer le tableau LPS (Longest Prefix Suffix)
+ const computeLPSArray = (pat, M, lps) => {
+  let len = 0;
   let i = 1;
-  let j = 0; // Index pour le plus long préfixe suffixe
+  lps[0] = 0;
 
-  carryOver[0] = -1; // Convention KMP, le premier élément est -1
-
-  while (i < n) {
-    if (pattern[i] === pattern[j]) {
-      j++;
-      carryOver[i] = j;
+  while (i < M) {
+    if (pat[i] === pat[len]) {
+      len++;
+      lps[i] = len;
       i++;
     } else {
-      if (j !== 0) {
-        j = carryOver[j - 1];
+      if (len !== 0) {
+        len = lps[len - 1];
       } else {
-        carryOver[i] = 0;
+        lps[i] = 0;
         i++;
       }
     }
   }
+};
 
-  return carryOver;
-}
+// Algorithme KMP
+const KMPSearch = (txt, pat) => {
+  const M = pat.length;
+  const N = txt.length;
 
-// Fonction pour rechercher le motif dans le texte en utilisant le tableau CarryOver
-function KMPsearch(text, pattern) {
-  const carryOver = computeCarryOver(pattern);
-  let i = 0; // Index pour le texte
-  let j = 0; // Index pour le motif
-  console.log(text.length);
-  while (i < text.length) {
-    if (pattern[j] === text[i]) {
+  const lps = new Array(M).fill(0);
+  computeLPSArray(pat, M, lps);
+
+  let i = 0; // Index pour txt[]
+  let j = 0; // Index pour pat[]
+  const positions = [];
+
+  while (i < N) {
+    if (pat[j] === txt[i]) {
       i++;
       j++;
-      console.log("patterne", pattern[j]);
-      console.log("texte", text[i]);
     }
 
-    if (j === pattern.length) {
-      // Motif trouvé, retourner vrai
-      return true;
-    } else if (i < text.length && pattern[j] !== text[i]) {
+    if (j === M) {
+      positions.push(i - j);
+      j = lps[j - 1];
+    } else if (i < N && pat[j] !== txt[i]) {
       if (j !== 0) {
-        j = carryOver[j - 1];
+        j = lps[j - 1];
       } else {
         i++;
       }
     }
   }
-  // Si on sort de la boucle sans correspondance, retourner faux
-  return false;
+
+  return { positions, lpsTable };
+};
+
+// Fonction pour mesurer le temps moyen d'exécution sur plusieurs itérations
+const measureExecutionTime = (txt, pat, numIterations) => {
+let totalTime = 0;
+let times = [];
+
+for (let i = 0; i < numIterations; i++) {
+  const startTime = performance.now();
+  KMPSearch(txt, pat);
+  const endTime = performance.now();
+  
+  const iterationTime = endTime - startTime;
+  if (iterationTime > 0.1) {  // Filtre les valeurs proches de 0
+    times.push(iterationTime);
+    totalTime += iterationTime;
+  }
 }
+
+// Trie les temps et trouve la médiane
+times.sort((a, b) => a - b);
+const medianTime = times[Math.floor(times.length / 2)];
+console.log(`Median time: ${medianTime.toFixed(2)} ms`);
+return medianTime;
+};
+
 
 //
 
@@ -742,6 +766,13 @@ const Automaton = () => {
   const [searchkmp, setSearchKmp] = useState(false);
   const [searchAutomate, setSearchAutomate] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [iterations, setIterations] = useState(1);
+  const [executionTime, setExecutionTime] = useState(null); // Temps moyen d'exécution
+  const [showTime, setShowTime]=useState(false);
+  const [textTime, setTextTime]=useState("Test Performance");
+  //
+
+  //
 
   const isKmp = () => {
     if (regex.length > 0) {
@@ -818,41 +849,108 @@ const Automaton = () => {
     reader.readAsText(file);
   };
 
-  // Fonction de recherche utilisant l'automate
-  const handleSearch = () => {
-    if (!MinAutomate) return;
+  //
 
+  //
+
+  // Fonction de recherche utilisant l'automate
+  const handleSearch = async() => {
+    await handleGenerateArbre(); // Attendre que l'arbre soit généré
+    await handleGenerateAutomate(); // Attendre que l'automate soit généré
+    await handleDeterminizeAutomate(); // Attendre que l'automate soit déterminisé
+    await handleMinimizeAutomate(); // Attendre que l'automate soit minimisé
+    if (!MinAutomate) return;
     const lines = fileContent.split("\n"); // Diviser le contenu du fichier par ligne
     const results = lines.filter((line) => TestTxt(MinAutomate, line)); // Rechercher les lignes qui correspondent
-    setSearchResults(results);
+    setSearchResults(results); // Stocker les résultats de la recherche
   };
+  // Fonction de recherche utilisant l'automate et mesurer le temps
+  const handleSearchTIME = async() => {
+    const totalExecutionTime = measureExecutionTime(fileContent, regex, iterations); // Mesurer le temps
+    await handleGenerateArbre(); // Attendre que l'arbre soit généré
+    await handleGenerateAutomate(); // Attendre que l'automate soit généré
+    await handleDeterminizeAutomate(); // Attendre que l'automate soit déterminisé
+    await handleMinimizeAutomate(); // Attendre que l'automate soit minimisé
+
+    if (!MinAutomate) return;
+    const lines = fileContent.split("\n"); // Diviser le contenu du fichier par ligne
+    const results = lines.filter((line) => TestTxt(MinAutomate, line)); // Rechercher les lignes qui correspondent
+    
+    setExecutionTime(totalExecutionTime); // Stocker le temps d'exécution Median
+    setSearchResults(results); // Stocker les résultats de la recherche
+  };
+
+  //
+
+  //
 
   // Fonction de recherche utilisant KMP
-  const handleSearchKMP = () => {
-    if (!kmp) return;
+// Fonction pour tester chaque ligne du fichier avec le pattern 
+const handleSearchKMP = () => {
+  const lines = fileContent.split('\n');
+  const res = [];
+  lines.forEach((line, index) => {
+    const { positions, lpsTable } = KMPSearch(line, regex);
+    if (positions.length > 0) {
+      res.push({
+        lineNumber: index + 1,
+        lineText: line,
+        positions,
+        lpsTable
+      });
+    }
+  });
+  setSearchResults(res); // Stocker les résultats de la recherche
+};
+// Fonction pour tester chaque ligne du fichier avec le pattern et mesurer le temps
+const handleSearchKMPTime = () => {
+  const lines = fileContent.split('\n');
+  const res = [];
+  const totalExecutionTime = measureExecutionTime(fileContent, regex, iterations); // Mesurer le temps
+  lines.forEach((line, index) => {
+    const { positions, lpsTable } = KMPSearch(line, regex);
+    if (positions.length > 0) {
+      res.push({
+        lineNumber: index + 1,
+        lineText: line,
+        positions,
+        lpsTable
+      });
+    }
+  });
 
-    const lines = fileContent.split("\n"); // Diviser le contenu du fichier par ligne
-    console.log("test1");
-    const results = lines.filter((line) => KMPsearch(line, regex)); // Rechercher les lignes qui correspondent
-    console.log("test1");
-    setSearchResults(results);
-  };
+  setExecutionTime(totalExecutionTime); // Stocker le temps d'exécution Median
+  setSearchResults(res); // Stocker les résultats de la recherche
+};
 
-  const handleAll = async () => {
-    if (!regex) return;
-    await handleGenerateArbre(); // Attendre que l'arbre soit généré
+  const handleAll =  () => {
+    if (!regex || !fileContent) return;
+     
     if (isKmp()) {
-      console.log("KMP");
+     
       setSearchKmp(true);
       setSearchAutomate(false);
       handleSearchKMP();
+
     } else {
       setSearchKmp(false);
       setSearchAutomate(true);
-      await handleGenerateAutomate(); // Attendre que l'automate soit généré
-      await handleDeterminizeAutomate(); // Attendre que l'automate soit déterminisé
-      await handleMinimizeAutomate(); // Attendre que l'automate soit minimisé
-      handleSearch(); // Ensuite, rechercher dans le fichier
+      handleSearch(); // rechercher dans le fichier
+    }
+  };
+  const handleAllTime =  () => {
+    if (!regex || !fileContent) return;
+     
+    if (isKmp()) {
+     
+      setSearchKmp(true);
+      setSearchAutomate(false);
+      handleSearchKMPTime();
+
+    } else {
+      setSearchKmp(false);
+      setSearchAutomate(true);
+      handleSearchTIME(); // rechercher dans le fichier
     }
   };
 
@@ -886,7 +984,7 @@ const Automaton = () => {
   }, [MinAutomate]);
 
   return (
-    <div className="container py-5">
+    <div className=" card container py-5">
       {/* Header */}
       <div className="mb-4">
         <Link to="/" className="text-decoration-none text-primary">
@@ -894,9 +992,48 @@ const Automaton = () => {
         </Link>
       </div>
 
-      <h1 className="mb-4">Automate avec transitions epsilon</h1>
+      <h1 className="mb-4">egrep Clone</h1>
 
-      {/* Input section */}
+<button className="btn btn-warning" onClick={()=>{
+   if (showTime) { setTextTime("Test Performance");
+   }else{ setTextTime("Test egrep"); } 
+  setShowTime(!showTime);
+}} >{textTime}</button>
+    
+      {showTime ? (
+<div className="row mb-4">
+<div className="col-md-4">
+  <label className="form-label">
+    Regex:
+    <input
+      value={regex}
+      onChange={(e) => setRegex(e.target.value)}
+      className="form-control"
+    />
+  </label>
+</div>
+<div className="col-md-4">
+  <input
+    type="file"
+    onChange={handleFileUpload}
+    accept=".txt"
+    className="form-control"
+  />
+</div>
+  {/* Input pour le nombre d'itérations */}
+<input 
+ type="number" 
+placeholder="Enter number of iterations" 
+value={iterations} 
+onChange={(e) => setIterations(parseInt(e.target.value))} 
+/>
+<div className="col-md-4 d-grid">
+  <button onClick={handleAllTime} className="btn btn-primary">
+    Rechercher
+  </button>
+</div>
+</div>
+      ) :(
       <div className="row mb-4">
         <div className="col-md-4">
           <label className="form-label">
@@ -922,6 +1059,7 @@ const Automaton = () => {
           </button>
         </div>
       </div>
+    )}
 
       {/* Search results */}
 
@@ -935,46 +1073,66 @@ const Automaton = () => {
           >
             Show Details
           </button>
+       
           <h3 className="mb-3">
             Résultats de la recherche : L'algorithme Knuth-Morris-Pratt (KMP)
-          </h3>
+          </h3>   
+          {searchResults.length > 0 && (  
+          <div>
           <ul className="list-group mb-4">
-            {searchResults.map((result, index) => (
+            {searchResults.map((res, index) => (
               <li key={index} className="list-group-item">
-                {result}
+               {res.lineNumber} | {res.lineText} | position(s): {res.positions.join(', ')}
               </li>
             ))}
           </ul>
-          {/* Modal for showing details */}
-          <Modal
-            show={showModal}
-            onHide={() => setShowModal(false)}
-            size="lg"
-            centered
-          >
-            <Modal.Header>
-              <Modal.Title>Details</Modal.Title>
-              {/* Close button in the top right */}
-              <button
-                type="button"
-                className="btn-close"
-                onClick={() => setShowModal(false)}
-              ></button>
-            </Modal.Header>
-            <Modal.Body>
-              {arbre && (
-                <div className="mb-4">
-                  <h2>Carry Over</h2>
-                </div>
-              )}
-            </Modal.Body>
-          </Modal>
+          <hr/>
+             {/* Affichage du temps d'exécution moyen */}
+      {showTime && executionTime !== null && (
+        <div>
+          <h3>Average Execution Time (Median): {executionTime.toFixed(2)} ms over {iterations} iteration(s)</h3>
+        </div>
+      )}
+          </div>)}
+         {/* Modal for showing details */}
+<Modal
+  show={showModal}
+  onHide={() => setShowModal(false)}
+  size="lg"
+  centered
+>
+  <Modal.Header>
+    <Modal.Title>Details</Modal.Title>
+    {/* Close button in the top right */}
+    <button
+      type="button"
+      className="btn-close"
+      onClick={() => setShowModal(false)}
+    ></button>
+  </Modal.Header>
+  <Modal.Body>
+    <div className="mb-4">
+      <h2>Carry Over (LPS Table)</h2>
+      {/* Afficher la table LPS ici */}
+      {searchResults.map((result, index) => (
+        <div key={index}>
+          <h3>Ligne {result.lineNumber}</h3>
+          <p>Texte de la ligne : {result.lineText}</p>
+          <p>Positions : {result.positions.join(', ')}</p>
+          <p>LPS Table : {result.lpsTable.join(', ')}</p>
+        </div>
+      ))}
+    </div>
+  </Modal.Body>
+</Modal>
+
         </div>
       ) : null}
       {searchAutomate ? (
         <div>
           {" "}
           {/* Button to trigger modal */}
+          {searchResults.length > 0 && (  <div>
           <button
             className="btn btn-secondary mb-4"
             onClick={() => setShowModal(true)} // Open modal
@@ -989,6 +1147,13 @@ const Automaton = () => {
               </li>
             ))}
           </ul>
+                    {/* Affichage du temps d'exécution moyen */}
+      { showTime && executionTime !== null && (
+        <div>
+          <h3>Average Execution Time (Median): {executionTime.toFixed(2)} ms over {iterations} iteration(s)</h3>
+        </div>
+      )}
+      </div>  )}
           {/* Modal for showing details */}
           <Modal
             show={showModal}
@@ -1038,6 +1203,8 @@ const Automaton = () => {
           </Modal>
         </div>
       ) : null}
+
+      
     </div>
   );
 };
