@@ -1,6 +1,11 @@
-const express = require('express');
-const axios = require('axios');
-const { exec } = require('child_process');
+const express = require("express");
+const axios = require("axios");
+const multer = require("multer");
+const fs = require("fs").promises;
+const { exec, spawn } = require("child_process");
+
+const path = require("path");
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -14,8 +19,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware pour parser le JSON
-app.use(express.json());
+// Configuration de multer pour stocker temporairement les fichiers dans le dossier 'uploads'
+const upload = multer({ dest: "uploads/" });
 
 // Endpoint pour télécharger un livre depuis Gutenberg
 app.get("/download/:id", async (req, res) => {
@@ -37,37 +42,93 @@ app.get("/download/:id", async (req, res) => {
   }
 });
 
-// Endpoint pour exécuter le test egrep
-app.post("/run-egrep", (req, res) => {
-  const { pattern, file, iterations } = req.body;
+// Endpoint pour exécuter la commande 'grep'
+app.post("/run-egrep", upload.single("file"), async (req, res) => {
+  const { pattern, iterations } = req.body;
 
-  // Commande egrep à exécuter
-  const command = `bash -c 'for i in $(seq 1 ${iterations}); do start=$(date +%s%N); egrep "${pattern}" "${file}" > /dev/null; end=$(date +%s%N); echo $((end - start)); done'`;
+  // Vérifiez que le fichier a bien été téléchargé
+  if (!req.file || !req.file.path) {
+    return res.status(400).send("Aucun fichier n'a été téléchargé.");
+  }
 
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Erreur d'exécution: ${error.message}`);
-      return res.status(500).send(`Erreur: ${error.message}`);
+  const filePath = path.resolve(req.file.path); // Utiliser le chemin complet pour Windows
+  const uploadsDir = path.dirname(filePath); // Chemin du dossier uploads
+
+  try {
+    // Vérifiez l'accès au fichier
+    await fs.access(filePath);
+    console.log(`Le chemin du fichier est: ${filePath}`);
+
+    // Vérifiez que le dossier 'uploads' existe et que vous pouvez y accéder
+    await fs.access(uploadsDir);
+    console.log(`Le dossier 'uploads' est accessible: ${uploadsDir}`);
+
+    // Listez les fichiers dans le dossier 'uploads'
+    const files = await fs.readdir(uploadsDir);
+    console.log("Fichiers dans le dossier uploads:", files);
+
+    // Continuez avec l'exécution d'egrep
+    const results = [];
+
+    for (let i = 0; i < iterations; i++) {
+      const start = process.hrtime(); // Commencer à chronométrer
+
+      const normalizedFilePath = filePath.replace(/\\/g, "/"); // Remplacer les antislashs
+      console.log(`Chemin utilisé dans egrep: ${normalizedFilePath}`); // Ajouter un log pour vérifier
+      const egrep = spawn("bash", [
+        "-c",
+        `egrep "${pattern}" "${normalizedFilePath}"`,
+      ]);
+
+      let stdoutData = "";
+      let stderrData = "";
+
+      // Capturer la sortie standard
+      egrep.stdout.on("data", (data) => {
+        stdoutData += data;
+      });
+
+      // Capturer la sortie d'erreur
+      egrep.stderr.on("data", (data) => {
+        stderrData += data;
+      });
+
+      // Lorsque le processus se termine
+      await new Promise((resolve, reject) => {
+        egrep.on("close", (code) => {
+          const elapsed = process.hrtime(start);
+          const elapsedTimeInMs = elapsed[0] * 1000 + elapsed[1] / 1000000; // Convertir en millisecondes
+
+          if (code !== 0) {
+            console.error(`Erreur d'exécution: ${stderrData}`);
+            return reject(new Error("Erreur d'exécution du processus egrep"));
+          }
+
+          // Ajouter les résultats de l'itération
+          results.push({
+            iteration: i + 1,
+            executionTimeMs: elapsedTimeInMs,
+          });
+
+          resolve();
+        });
+      });
     }
-    if (stderr) {
-      console.error(`Erreur stderr: ${stderr}`);
-      return res.status(500).send(`Erreur: ${stderr}`);
-    }
 
-    // Transformer le résultat en tableau de temps
-    const times = stdout.split('\n').filter(Boolean).map(Number);
-    const median = calculateMedian(times);
+    // Supprimer le fichier temporaire après l'exécution de la commande
+    await fs.unlink(filePath);
 
-    res.json({ times, median });
-  });
+    // Retourner les résultats
+    res.json({
+      message: "Commande egrep exécutée avec succès.",
+      iterations: results.length,
+      details: { results },
+    });
+  } catch (error) {
+    console.error("Erreur lors de l'exécution de la commande:", error);
+    res.status(500).send("Erreur lors de l'exécution du processus egrep");
+  }
 });
-
-// Fonction pour calculer la médiane
-function calculateMedian(numbers) {
-  const sorted = numbers.sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
 
 // Démarrer le serveur
 app.listen(PORT, () => {

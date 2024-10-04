@@ -1,16 +1,11 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBars } from "@fortawesome/free-solid-svg-icons";
 //
 
-function Navbar({ SelectedSearch }) {
+function Navbar({ toggleOffcanvas, SelectedSearch, isSidebarOpen }) {
   const [text, setText] = useState("");
-
-  const toggleOffcanvas = () => {
-    document
-      .querySelectorAll(".sidebar-offcanvas")
-      .forEach((el) => el.classList.toggle("open"));
-  };
 
   const handlesearch = (text) => {
     SelectedSearch(text);
@@ -19,22 +14,26 @@ function Navbar({ SelectedSearch }) {
   return (
     <nav
       id="barrenavigation"
-      className="navbar navbar-expand bg-white navbar-white sticky-top px-4 pb-2 pt-2 py-0 gap-3 justify-content-between"
+      className={`navbar navbar-expand bg-white navbar-white sticky-top px-4 pb-2 pt-2 py-0 gap-3 justify-content-between ${
+        isSidebarOpen ? "open" : ""
+      }`}
     >
       {/* Bouton pour cacher la sidebar, ajouté ici dans le contenu principal */}
-      <div cbme="d-flex w-50">
-        <button
-          className=" p-4 textprimary border-0 sidebar-toggler flex-shrink-0 "
-          onClick={() => toggleOffcanvas()}
-        >
-          <i className="fas fa-bars"></i>
-        </button>{" "}
+      <div cbme="d-flex">
+        {!isSidebarOpen ? (
+          <button
+            className=" p-4 textprimary border-0 sidebar-toggler flex-shrink-0 "
+            onClick={() => toggleOffcanvas()}
+          >
+            <FontAwesomeIcon icon={faBars} />
+          </button>
+        ) : null}
       </div>
-      <div className="d-flex w-50 gap-3">
+      <div className="d-flex w-auto gap-3">
         <input
           type="text"
           placeholder="Enter Text..."
-          className="form-control w-50 "
+          className="form-control "
           value={text}
           onChange={(e) => setText(e.target.value)}
         />

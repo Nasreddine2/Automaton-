@@ -92,14 +92,13 @@ html {
   z-index: 999;
 }
 
-@media (min-width: 300px) {
+@media (min-width: 500px) {
   .sidebar {
     margin-left: 0;
   }
 
-  .sidebar.open {
+  .sidebar.closed {
     margin-left: -300px;
-    transition: 0.7s;
   }
 
   .content {
@@ -109,7 +108,36 @@ html {
   .content.open {
     width: 100%;
     margin-left: 0;
-    transition: 0.7s;
+  }
+}
+
+@media (max-width: 500px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 999 !important;
+    transition: 0.7s !important;
+    transform: translateX(-100%); /* Cacher le sidebar par défaut */
+  }
+
+  .sidebar.open {
+    transform: translateX(0); /* Afficher le sidebar quand il est ouvert */
+  }
+
+  /* Cacher le navbar lorsque la sidebar est ouverte */
+  .navbar {
+    display: flex; /* Afficher par défaut */
+    transition: opacity 0.5s ease; /* Ajout d'une transition pour la douceur */
+  }
+
+  .sidebar.open ~ .navbar {
+    display: none; /* Cacher le navbar quand la sidebar est ouverte */
+  }
+  #barrenavigation.open {
+    display: none;
   }
 }
 
@@ -293,11 +321,11 @@ Définit une hauteur maximale pour le contenu de la barre latérale */
   }
 }
 
-.LoginImg {
+/* .LoginImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
   background-size: cover;
   min-height: 100vh;
-  background-image: url("./photos/bibliotheque.jpg");
-}
+  /* background-image: url("./bibliotheque.jpg"); 
+ */

@@ -1,8 +1,14 @@
 import { Link } from "react-router-dom";
 import React, { useEffect } from "react";
 import booksData from "../database.json";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBars } from "@fortawesome/free-solid-svg-icons";
 
-export default function Sidebar({ onLanguageSelect }) {
+export default function Sidebar({
+  toggleOffcanvas,
+  onLanguageSelect,
+  isSidebarOpen,
+}) {
   const [languages, setLanguages] = React.useState([]);
   const [activeLanguage, setActiveLanguage] = React.useState("All");
 
@@ -18,13 +24,32 @@ export default function Sidebar({ onLanguageSelect }) {
   };
 
   return (
-    <div id="sidebar" className="sidebar bg-white sidebar-offcanvas pe-2 pb-3">
+    <div
+      id="sidebar"
+      className={`sidebar bg-white sidebar-offcanvas pe-2 pb-3 ${
+        isSidebarOpen ? "open" : "closed"
+      }`}
+    >
       <nav className="navbar bg-white navbar-dark p-1">
-        <Link to={"/"} className="navbar-brand mx-4 mb-3">
-          <h3 className="textprimary d-flex align-items-center me-5 mbr-section-subtitle align-center text-dark mbr-light mbr-fonts-style display-1 fs-1">
-            Books
-          </h3>{" "}
-        </Link>
+        <div className="d-flex justify-content-between">
+          <Link to={"/"} className="navbar-brand mx-4 mb-3">
+            <h3 className="textprimary d-flex align-items-center me-5 mbr-section-subtitle align-center text-dark mbr-light mbr-fonts-style display-1 fs-1">
+              Books
+            </h3>{" "}
+          </Link>
+          {/* Bouton pour cacher la sidebar, ajouté ici dans le contenu principal */}
+
+          <div className="d-flex w-50">
+            {isSidebarOpen && (
+              <button
+                className=" p-4 textprimary border-0 sidebar-toggler flex-shrink-0"
+                onClick={() => toggleOffcanvas()}
+              >
+                <FontAwesomeIcon icon={faBars} />
+              </button>
+            )}
+          </div>
+        </div>
 
         <div className="navbar-nav w-100 ">
           <span

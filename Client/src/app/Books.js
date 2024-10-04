@@ -6,9 +6,6 @@ import Sidebar from "./sidebar";
 import Navbar from "./navbar";
 
 const BookList = () => {
-  const [books, setBooks] = useState([]);
-  const [languages, setLanguages] = useState([]);
-
   const [filteredBooks, setFilteredBooks] = useState([]);
 
   // Cette fonction sera appelée par le composant Sidebar
@@ -74,13 +71,42 @@ const BookList = () => {
     }
   };
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const toggleOffcanvas = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  //  Hook pour gérer l'état du bouton en fonction de la largeur de l'écran
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 500) {
+        setIsSidebarOpen(false); // Ferme la sidebar si on dépasse pas 500px
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   return (
     <div className="">
       {/* Sidebar */}
       <div className="container-fluid position-relative d-flex flex-row-reverse p-0">
-        <Sidebar onLanguageSelect={handleLanguageSelect} />
-        <div class="content sidebar-offcanvas">
-          <Navbar SelectedSearch={handleSearch} />
+        <Sidebar
+          toggleOffcanvas={toggleOffcanvas}
+          isSidebarOpen={isSidebarOpen}
+          onLanguageSelect={handleLanguageSelect}
+        />
+        <div class={` content sidebar-offcanvas ${!isSidebarOpen && "open"} `}>
+          <Navbar
+            toggleOffcanvas={toggleOffcanvas}
+            isSidebarOpen={isSidebarOpen}
+            SelectedSearch={handleSearch}
+          />
           <div
             className="content-wrapper"
             style={{ backgroundColor: "#f0f0f0" }}
