@@ -1,0 +1,38 @@
+.
+├── Client
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── public
+│   │   ├── bg.jpg
+│   │   ├── bibliotheque.jpg
+│   │   ├── book.png
+│   │   └── index.html
+│   └── src
+│       ├── app
+│       │   ├── App.js
+│       │   ├── AppRoutes.js
+│       │   ├── automate.js
+│       │   ├── Books.js
+│       │   ├── component
+│       │   │   ├── arbre.js
+│       │   │   ├── chart.js
+│       │   │   ├── navbar.js
+│       │   │   ├── sidebar.js
+│       │   │   ├── Spinner.js
+│       │   │   ├── tableau.js
+│       │   │   └── visualiser.js
+│       │   └── HomePage.js
+│       ├── App.css
+│       ├── database.json
+│       └── index.js
+├── package.json
+├── package-lock.json
+├── project-tree.txt
+├── README.md
+└── Server
+    ├── package.json
+    ├── package-lock.json
+    ├── server.js
+    └── uploads
+
+7 directories, 28 files
