@@ -1,13 +1,6 @@
 import React from "react";
-import { useFormik } from "formik";
-import axios from "axios";
-import { useState } from "react";
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
+
 import "react-toastify/dist/ReactToastify.css";
-import { Toastify } from "toastify";
-import { Container, Row, Col, Button, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
 //
 
@@ -85,7 +78,7 @@ function HomePage() {
                   </div>
                   <div className="col-12 col-md-6 mb-3 d-flex justify-content-center">
                     <Link
-                      to={"/automaton"}
+                      to={"https://www.gutenberg.org/"}
                       className="btn btn-light w-100 text-dark text-decoration-none border"
                       target="_blank"
                     >

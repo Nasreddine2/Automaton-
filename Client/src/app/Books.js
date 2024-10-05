@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import booksData from "../database.json";
 
-import Sidebar from "./sidebar";
-import Navbar from "./navbar";
+import Sidebar from "./component/sidebar";
+import Navbar from "./component/navbar";
 
 const BookList = () => {
   const [filteredBooks, setFilteredBooks] = useState([]);

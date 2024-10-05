@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Modal } from "react-bootstrap";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
-import ResultsTable from "./tableau";
-import SyntaxTree from "./arbre";
-import AutomateVisualizer from "./visualiser";
-import ExecutionTimeChart from "./chart";
+import ResultsTable from "./component/tableau";
+import SyntaxTree from "./component/arbre";
+import AutomateVisualizer from "./component/visualiser";
+import ExecutionTimeChart from "./component/chart";
 
 // Compteur d'état global pour assurer des identifiants uniques
 let stateCounter = 0;
@@ -366,15 +366,6 @@ const KMPSearch = (txt, pat) => {
 
   return { positions, lpsTable };
 };
-
-// Test de la fonction avec un texte contenant des espaces
-const txt = "state--Sargon and Merodach-baladan--Sennacherib's attempt";
-const pat = "Sargon";
-const result = KMPSearch(txt, pat);
-
-// Affichage des résultats
-console.log("Positions trouvées :", result.positions); // Affiche les positions où le motif a été trouvé
-console.log("Tableau LPS :", result.lpsTable); // Affiche le tableau LPS
 
 //
 
@@ -740,13 +731,11 @@ const Automaton = () => {
   const [medianTime, setMedianTime] = useState(null); // Temps d'exécution médian
   const [executionTimeEgrep, setExecutionTimeEgrep] = useState(null); // Temps moyen d'exécution
   const [medianTimeEgrep, setMedianTimeEgrep] = useState(null); // Temps d'exécution médian
-  const [selectedFile, setSelectedFile] = useState(null);
   const [showTime, setShowTime] = useState(false);
   const [textTime, setTextTime] = useState("Test Performance");
   const [nbiteration, setNbiteration] = useState(1);
   //
   const [timesearch, setTimesearch] = useState(null);
-  const [resegrep, setResegrep] = useState(null);
   const [fileInputKey, setFileInputKey] = useState(Date.now());
   //
 
@@ -794,7 +783,7 @@ const Automaton = () => {
   };
 
   // Fonction pour déterminiser l'automate (NFA -> DFA)
-  const handleDeterminizeAutomate = async () => {
+  const handleDeterminizeAutomate = useCallback(async () => {
     return new Promise((resolve) => {
       if (automate) {
         const dfa = determinizeAutomate(automate); // Déterminiser l'automate
@@ -803,10 +792,10 @@ const Automaton = () => {
       }
       resolve(); // Marquer la fonction comme terminée
     });
-  };
+  }, [automate]);
 
   // Fonction pour minimiser l'automate déterminisé (DFA)
-  const handleMinimizeAutomate = async () => {
+  const handleMinimizeAutomate = useCallback(async () => {
     return new Promise((resolve) => {
       if (detAutomate) {
         const minDfa = minimizeAutomate(detAutomate); // Minimiser l'automate déterminisé
@@ -814,10 +803,10 @@ const Automaton = () => {
       }
       resolve(); // Marquer la fonction comme terminée
     });
-  };
+  }, [detAutomate]);
 
   // Fonction de recherche utilisant l'automate
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!MinAutomate) return; // Si l'automate minimisé est null, arrêter
 
     const lines = fileTextContent.split("\n"); // Diviser le contenu du fichier par ligne
@@ -831,13 +820,12 @@ const Automaton = () => {
       .filter((result) => result.matches);
 
     setSearchResults(results); // Stocker les résultats
-  };
+  }, [MinAutomate, fileTextContent]);
 
   // Fonction pour charger le fichier
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    setSelectedFile(file);
     if (file) {
       setFileContent(file);
 
@@ -866,7 +854,6 @@ const Automaton = () => {
           lpsTable,
         });
       }
-      console.log(lpsTable);
     });
     setSearchResults(res); // Stocker les résultats de la recherche
   };
@@ -930,8 +917,7 @@ const Automaton = () => {
       );
 
       const results = response.data.details.results;
-      setResegrep(results); // Mettez à jour l'état avec les résultats
-      console.log(results);
+
       return results; // Retourner les résultats pour les utiliser dans handleAllTime
     } catch (error) {
       console.error("Erreur lors de l'exécution egrep:", error);
@@ -973,8 +959,8 @@ const Automaton = () => {
         );
       }
 
-      setExecutionTime(averageTime); // Stocker le temps d'exécution moyen
-      setMedianTime(medianTime); // Stocker le temps d'exécution médian
+      setExecutionTime(averageTime.toFixed(2)); // Stocker le temps d'exécution moyen
+      setMedianTime(medianTime.toFixed(2)); // Stocker le temps d'exécution médian
       setNbiteration(iterations);
     } else {
       setSearchKmp(false);
@@ -993,8 +979,8 @@ const Automaton = () => {
         console.warn("Aucun résultat n'a été retourné.");
       }
 
-      setExecutionTime(averageTime); // Stocker le temps d'exécution moyen
-      setMedianTime(medianTime); // Stocker le temps d'exécution médian
+      setExecutionTime(averageTime.toFixed(2)); // Stocker le temps d'exécution moyen
+      setMedianTime(medianTime.toFixed(2)); // Stocker le temps d'exécution médian
       setNbiteration(iterations);
     }
     let averageTimeegrep = 0;
@@ -1009,13 +995,11 @@ const Automaton = () => {
       console.warn("Aucun résultat n'a été retourné.");
     }
 
-    setExecutionTimeEgrep(averageTimeegrep); // Stocker le temps d'exécution moyen
-    setMedianTimeEgrep(medianTimeegrep); // Stocker le temps d'exécution médian
-    console.log(egrepResults);
+    setExecutionTimeEgrep(averageTimeegrep.toFixed(2)); // Stocker le temps d'exécution moyen
+    setMedianTimeEgrep(medianTimeegrep.toFixed(2)); // Stocker le temps d'exécution médian
 
     // Mettre à jour timesearch avec les résultats
     setTimesearch({ results: res, egrep: egrepResults });
-    console.log(timesearch);
   };
 
   //
@@ -1036,10 +1020,8 @@ const Automaton = () => {
     setMedianTime(null);
     setExecutionTimeEgrep(null);
     setMedianTimeEgrep(null);
-    setResegrep([]);
     setNbiteration(1);
     setIterations(1);
-    setSelectedFile(null);
     setFileInputKey(Date.now()); // Générer une nouvelle clé
   };
 
@@ -1050,19 +1032,19 @@ const Automaton = () => {
     if (automate) {
       handleDeterminizeAutomate(); // Déclencher la déterminisation après la génération de l'automate
     }
-  }, [automate]);
+  }, [automate, handleDeterminizeAutomate]);
 
   useEffect(() => {
     if (detAutomate) {
       handleMinimizeAutomate(); // Déclencher la minimisation après la déterminisation de l'automate
     }
-  }, [detAutomate]);
+  }, [detAutomate, handleMinimizeAutomate]);
 
   useEffect(() => {
     if (MinAutomate) {
       handleSearch(); // Déclencher la recherche après la minimisation de l'automate
     }
-  }, [MinAutomate]);
+  }, [MinAutomate, handleSearch]);
 
   return (
     <div

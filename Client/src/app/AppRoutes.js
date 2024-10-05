@@ -1,9 +1,7 @@
-import React, { lazy, Suspense } from "react";
-import { Link, Routes } from "react-router-dom";
-import Spinner from "./Spinner";
-import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route } from "react-router-dom";
-import { Navigate } from "react-router-dom";
+import React, { Suspense } from "react";
+import { Routes } from "react-router-dom";
+import Spinner from "./component/Spinner";
+import { Route } from "react-router-dom";
 
 //
 
