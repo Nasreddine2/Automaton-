@@ -42,43 +42,31 @@ app.get("/download/:id", async (req, res) => {
   }
 });
 
-// Endpoint pour exécuter la commande 'grep'
+// Fonction pour convertir un chemin Windows en format compatible bash
+const convertToBashPath = (winPath) => {
+  return winPath.replace(/\\/g, "/");
+};
+
+// Endpoint pour exécuter la commande 'egrep'
 app.post("/run-egrep", upload.single("file"), async (req, res) => {
   const { pattern, iterations } = req.body;
 
-  // Vérifiez que le fichier a bien été téléchargé
-  if (!req.file || !req.file.path) {
-    return res.status(400).send("Aucun fichier n'a été téléchargé.");
-  }
-
-  const filePath = path.resolve(req.file.path); // Utiliser le chemin complet pour Windows
-  const uploadsDir = path.dirname(filePath); // Chemin du dossier uploads
+  const filePath = path.resolve(req.file.path); // Utiliser le chemin complet du fichier
+  const bashFilePath = convertToBashPath(filePath); // Convertir le chemin pour bash
 
   try {
-    // Vérifiez l'accès au fichier
+    // Vérifier si le fichier existe
     await fs.access(filePath);
-    console.log(`Le chemin du fichier est: ${filePath}`);
 
-    // Vérifiez que le dossier 'uploads' existe et que vous pouvez y accéder
-    await fs.access(uploadsDir);
-    console.log(`Le dossier 'uploads' est accessible: ${uploadsDir}`);
-
-    // Listez les fichiers dans le dossier 'uploads'
-    const files = await fs.readdir(uploadsDir);
-    console.log("Fichiers dans le dossier uploads:", files);
-
-    // Continuez avec l'exécution d'egrep
     const results = [];
 
     for (let i = 0; i < iterations; i++) {
       const start = process.hrtime(); // Commencer à chronométrer
 
-      const normalizedFilePath = filePath.replace(/\\/g, "/"); // Remplacer les antislashs
-      console.log(`Chemin utilisé dans egrep: ${normalizedFilePath}`); // Ajouter un log pour vérifier
-      const egrep = spawn("bash", [
-        "-c",
-        `egrep "${pattern}" "${normalizedFilePath}"`,
-      ]);
+      // Force l'utilisation de bash pour exécuter egrep
+      const egrepCommand = `egrep '${pattern}' '${bashFilePath}'`;
+
+      const egrep = spawn("bash", ["-c", egrepCommand]);
 
       let stdoutData = "";
       let stderrData = "";
@@ -97,17 +85,17 @@ app.post("/run-egrep", upload.single("file"), async (req, res) => {
       await new Promise((resolve, reject) => {
         egrep.on("close", (code) => {
           const elapsed = process.hrtime(start);
-          const elapsedTimeInMs = elapsed[0] * 1000 + elapsed[1] / 1000000; // Convertir en millisecondes
+          const elapsedTimeInMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
 
-          if (code !== 0) {
+          if (code !== 0 && code !== 1) {
             console.error(`Erreur d'exécution: ${stderrData}`);
             return reject(new Error("Erreur d'exécution du processus egrep"));
           }
 
-          // Ajouter les résultats de l'itération
           results.push({
             iteration: i + 1,
-            executionTimeMs: elapsedTimeInMs,
+            executionTimeMs: parseFloat(elapsedTimeInMs.toFixed(2)), // Arrondir à 2 décimales
+            output: stdoutData.trim() || "Aucun résultat trouvé.",
           });
 
           resolve();
@@ -115,7 +103,7 @@ app.post("/run-egrep", upload.single("file"), async (req, res) => {
       });
     }
 
-    // Supprimer le fichier temporaire après l'exécution de la commande
+    // Supprimer le fichier temporaire après toutes les itérations
     await fs.unlink(filePath);
 
     // Retourner les résultats
@@ -126,7 +114,9 @@ app.post("/run-egrep", upload.single("file"), async (req, res) => {
     });
   } catch (error) {
     console.error("Erreur lors de l'exécution de la commande:", error);
-    res.status(500).send("Erreur lors de l'exécution du processus egrep");
+    res
+      .status(500)
+      .send(`Erreur lors de l'exécution du processus egrep: ${error.message}`);
   }
 });
 
