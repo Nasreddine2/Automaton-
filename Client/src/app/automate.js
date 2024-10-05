@@ -7,6 +7,7 @@ import axios from "axios";
 import ResultsTable from "./tableau";
 import SyntaxTree from "./arbre";
 import AutomateVisualizer from "./visualiser";
+import ExecutionTimeChart from "./chart";
 
 // Compteur d'état global pour assurer des identifiants uniques
 let stateCounter = 0;
@@ -365,6 +366,15 @@ const KMPSearch = (txt, pat) => {
 
   return { positions, lpsTable };
 };
+
+// Test de la fonction avec un texte contenant des espaces
+const txt = "state--Sargon and Merodach-baladan--Sennacherib's attempt";
+const pat = "Sargon";
+const result = KMPSearch(txt, pat);
+
+// Affichage des résultats
+console.log("Positions trouvées :", result.positions); // Affiche les positions où le motif a été trouvé
+console.log("Tableau LPS :", result.lpsTable); // Affiche le tableau LPS
 
 //
 
@@ -811,7 +821,14 @@ const Automaton = () => {
     if (!MinAutomate) return; // Si l'automate minimisé est null, arrêter
 
     const lines = fileTextContent.split("\n"); // Diviser le contenu du fichier par ligne
-    const results = lines.filter((line) => TestTxt(MinAutomate, line)); // Tester chaque ligne
+
+    const results = lines
+      .map((line, index) => ({
+        lineNumber: index + 1, // Numéro de la ligne (index commence à 0, donc +1)
+        lineText: line, // Le texte de la ligne
+        matches: TestTxt(MinAutomate, line), // Tester la ligne avec l'automate
+      }))
+      .filter((result) => result.matches);
 
     setSearchResults(results); // Stocker les résultats
   };
@@ -849,6 +866,7 @@ const Automaton = () => {
           lpsTable,
         });
       }
+      console.log(lpsTable);
     });
     setSearchResults(res); // Stocker les résultats de la recherche
   };
@@ -932,9 +950,9 @@ const Automaton = () => {
 
     // Attendre les résultats de handleEgrep
     const egrepResults = await handleEgrep();
-    if (!egrepResults) {
-      return; // Sortir si handleEgrep a échoué
-    }
+    // if (!egrepResults) {
+    //   return; // Sortir si handleEgrep a échoué
+    // }
 
     let res = [];
     if (isKmp()) {
@@ -972,19 +990,32 @@ const Automaton = () => {
           res.reduce((acc, curr) => acc + curr.time, 0) / res.length;
         medianTime = res[Math.floor(res.length / 2)].time;
       } else {
-        console.warn(
-          "Aucun résultat n'a été retourné par measureExecutionTimeAutomate."
-        );
+        console.warn("Aucun résultat n'a été retourné.");
       }
 
       setExecutionTime(averageTime); // Stocker le temps d'exécution moyen
       setMedianTime(medianTime); // Stocker le temps d'exécution médian
       setNbiteration(iterations);
     }
+    let averageTimeegrep = 0;
+    let medianTimeegrep = 0;
+    if (egrepResults && egrepResults.length > 0) {
+      averageTimeegrep =
+        egrepResults.reduce((acc, curr) => acc + curr.executionTimeMs, 0) /
+        egrepResults.length;
+      medianTimeegrep =
+        egrepResults[Math.floor(egrepResults.length / 2)].executionTimeMs;
+    } else {
+      console.warn("Aucun résultat n'a été retourné.");
+    }
+
+    setExecutionTimeEgrep(averageTimeegrep); // Stocker le temps d'exécution moyen
+    setMedianTimeEgrep(medianTimeegrep); // Stocker le temps d'exécution médian
+    console.log(egrepResults);
 
     // Mettre à jour timesearch avec les résultats
     setTimesearch({ results: res, egrep: egrepResults });
-    console.log("timesearch", { results: res, egrep: egrepResults }); // Afficher les résultats
+    console.log(timesearch);
   };
 
   //
@@ -1054,7 +1085,7 @@ const Automaton = () => {
           className="card container py-3 w-auto shadow-lg rounded"
           style={{
             minHeight: "400px",
-            maxHeight: "600px", // Limite la taille maximale
+            maxHeight: "700px", // Limite la taille maximale
             overflowY: "auto", // Ajoute une barre de défilement si le contenu est trop long
             background: "rgba(255, 255, 255, 0.9)", // Semi-transparente
           }}
@@ -1069,7 +1100,7 @@ const Automaton = () => {
                 if (showTime) {
                   setTextTime("Test Performance");
                 } else {
-                  setTextTime("Test egrep");
+                  setTextTime("Clone egrep");
                 }
                 setShowTime(!showTime);
                 handleReset();
@@ -1182,14 +1213,14 @@ const Automaton = () => {
           {searchkmp ? (
             <div>
               <div className="mt-3 d-flex justify-content-between">
+                <button className="btn btn-warning mb-4" onClick={handleReset}>
+                  Reinitialiser
+                </button>{" "}
                 <button
                   className="btn btn-secondary mb-4"
                   onClick={() => setShowModal(true)}
                 >
                   Details
-                </button>
-                <button className="btn btn-warning mb-4" onClick={handleReset}>
-                  Reinitialiser
                 </button>
               </div>
               {!showTime ? (
@@ -1203,31 +1234,106 @@ const Automaton = () => {
                   Knuth-Morris-Pratt (KMP)
                 </h3>
               )}
+              <hr />
               <div>
                 {searchResults.length > 0 && (
                   <>
-                    <ul className="list-group mb-4">
-                      {searchResults.map((res, index) => (
-                        <li key={index} className="list-group-item">
-                          {res.lineNumber} | {res.lineText} | position(s):{" "}
-                          {res.positions.join(", ")}
-                        </li>
-                      ))}
-                    </ul>{" "}
+                    <div className="table-responsive mb-4">
+                      {searchResults?.length > 0 ? (
+                        <table className="table table-striped table-bordered">
+                          <thead>
+                            <tr>
+                              <th scope="col">Numéro de Ligne</th>
+                              <th scope="col">Texte de la Ligne</th>
+                              <th scope="col">Position(s)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {searchResults.map((res, index) => (
+                              <tr key={index}>
+                                <td>{res?.lineNumber ?? "-"}</td>
+                                <td>{res?.lineText ?? "Texte indisponible"}</td>
+                                <td>
+                                  {Array.isArray(res?.positions) &&
+                                  res.positions.length > 0
+                                    ? res.positions.join(", ")
+                                    : "Aucune position"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div
+                          className="alert alert-warning text-center"
+                          role="alert"
+                        >
+                          Aucun résultat trouvé
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
 
                 {/* Affichage du temps d'exécution moyen */}
                 {showTime && executionTime !== null && (
                   <div>
-                    <h3>
-                      Temps d'execution moyen: {executionTime.toFixed(2)} ms
-                      pour {nbiteration} iteration{nbiteration > 1 ? "s" : null}
-                    </h3>
-                    <h3>
-                      Temps d'execution (Median): {executionTime.toFixed(2)} ms
-                      pour {nbiteration} iteration{nbiteration > 1 ? "s" : null}
-                    </h3>
+                    {" "}
+                    <div className="card container-fluid">
+                      <div>
+                        {timesearch &&
+                        (timesearch?.results?.length > 0 ||
+                          timesearch?.egrep?.length > 0) ? (
+                          <ExecutionTimeChart
+                            isKMP={searchkmp}
+                            Times={
+                              timesearch?.results
+                                ? timesearch.results.map((r) => r?.time ?? 0) // Par défaut à 0 si `r.time` est nul
+                                : []
+                            }
+                            egrepTimes={
+                              timesearch?.egrep
+                                ? timesearch.egrep.map(
+                                    (r) => r?.executionTimeMs ?? 0
+                                  ) // Par défaut à 0 si `r.executionTimeMs` est nul
+                                : []
+                            }
+                          />
+                        ) : (
+                          <div className="text-center">
+                            Chargement des données...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="m-3">
+                      <h2>
+                        Analyse des Temps d'Exécution ({nbiteration} Iteration
+                        {iterations > 1 ? "s" : ""})
+                      </h2>
+                      <hr />
+                      <table className="table table-bordered mt-4">
+                        <thead>
+                          <tr>
+                            <th scope="col">Critère</th>
+                            <th scope="col">Automate</th>
+                            <th scope="col">egrep</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Moyenne temps exécution</td>
+                            <td>{executionTime}</td>
+                            <td>{executionTimeEgrep}</td>
+                          </tr>
+                          <tr>
+                            <td>Médiane temps exécution</td>
+                            <td>{medianTime}</td>
+                            <td>{medianTimeEgrep}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1250,17 +1356,44 @@ const Automaton = () => {
                     ></button>
                   </Modal.Header>
                   <Modal.Body>
-                    <div className="mb-4">
-                      <h2>Carry Over (LPS Table)</h2>
-                      {/* Afficher la table LPS ici */}
-                      {searchResults.map((result, index) => (
-                        <div key={index}>
-                          <h3>Ligne {result.lineNumber}</h3>
-                          <p>Texte de la ligne : {result.lineText}</p>
-                          <p>Positions : {result.positions.join(", ")}</p>
-                          <p>LPS Table : {result.lpsTable.join(", ")}</p>
-                        </div>
-                      ))}
+                    <div className="table-responsive mb-4">
+                      {/* Vérification pour s'assurer qu'il y a des résultats à afficher */}
+                      {searchResults.length > 0 ? (
+                        <table className="table table-striped table-bordered">
+                          <thead>
+                            <tr>
+                              <th scope="col">Ligne</th>
+                              <th scope="col">Texte de la ligne</th>
+                              <th scope="col">Positions</th>
+                              <th scope="col">Tableau LPS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {searchResults.map((result, index) => (
+                              <tr key={index}>
+                                <td>{result.lineNumber ?? "-"}</td>
+                                <td>
+                                  {result.lineText ?? "Texte indisponible"}
+                                </td>
+                                <td>
+                                  {Array.isArray(result.positions) &&
+                                  result.positions.length > 0
+                                    ? result.positions.join(", ")
+                                    : "Aucune position"}
+                                </td>
+                                <td>
+                                  {Array.isArray(result.lpsTable) &&
+                                  result.lpsTable.length > 0
+                                    ? result.lpsTable.join(", ")
+                                    : "Aucun LPS disponible"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <p>Aucun résultat trouvé.</p>
+                      )}
                     </div>
                   </Modal.Body>
                 </Modal>
@@ -1280,8 +1413,17 @@ const Automaton = () => {
                       onClick={() => setShowModal(false)}
                     ></button>
                   </Modal.Header>
+
                   <Modal.Body>
-                    <ResultsTable timesearch={timesearch} isKMP={isKmp} />
+                    {timesearch &&
+                    (timesearch.results?.length > 0 ||
+                      timesearch.egrep?.length > 0) ? (
+                      <ResultsTable timesearch={timesearch} />
+                    ) : (
+                      <div className="text-center">
+                        Chargement des résultats ou aucune donnée disponible
+                      </div>
+                    )}
                   </Modal.Body>
                 </Modal>
               )}
@@ -1292,14 +1434,14 @@ const Automaton = () => {
               {" "}
               {/* Button to trigger modal */}
               <div className="mt-3 d-flex justify-content-between">
+                <button className="btn btn-warning mb-4" onClick={handleReset}>
+                  Reinitialiser
+                </button>{" "}
                 <button
                   className="btn btn-secondary mb-4"
                   onClick={() => setShowModal(true)} // Open modal
                 >
                   Details
-                </button>
-                <button className="btn btn-warning mb-4" onClick={handleReset}>
-                  Reinitialiser
                 </button>
               </div>
               <div>
@@ -1319,28 +1461,95 @@ const Automaton = () => {
                   </>
                 )}
 
-                {searchResults.length > 0 && (
+                {searchResults && searchResults.length > 0 && (
                   <>
-                    <ul className="list-group mb-4">
-                      {searchResults.map((result, index) => (
-                        <li key={index} className="list-group-item">
-                          {result}
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="table-responsive mb-4">
+                      {searchResults?.length > 0 ? (
+                        <table className="table table-striped table-bordered">
+                          <thead>
+                            <tr>
+                              <th scope="col">Numéro de Ligne</th>
+                              <th scope="col">Texte de la Ligne</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {searchResults.map((res, index) => (
+                              <tr key={index}>
+                                <td>{res?.lineNumber ?? "-"}</td>
+                                <td>{res?.lineText ?? "Texte indisponible"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div
+                          className="alert alert-warning text-center"
+                          role="alert"
+                        >
+                          Aucun résultat trouvé
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
                 {/* Affichage du temps d'exécution moyen */}
                 {showTime && executionTime !== null && (
                   <div>
-                    <h3>
-                      Temps d'execution moyen: {executionTime.toFixed(2)} ms
-                      pour {nbiteration} iteration{nbiteration > 1 ? "s" : null}
-                    </h3>
-                    <h3>
-                      Temps d'execution (Median): {executionTime.toFixed(2)} ms
-                      pour {nbiteration} iteration{nbiteration > 1 ? "s" : null}
-                    </h3>
+                    <div className="card container-fluid m-3">
+                      <div>
+                        {timesearch &&
+                        (timesearch?.results?.length > 0 ||
+                          timesearch?.egrep?.length > 0) ? (
+                          <ExecutionTimeChart
+                            isKMP={searchkmp}
+                            Times={
+                              timesearch?.results
+                                ? timesearch.results.map((r) => r?.time ?? 0) // Par défaut à 0 si `r.time` est nul
+                                : []
+                            }
+                            egrepTimes={
+                              timesearch?.egrep
+                                ? timesearch.egrep.map(
+                                    (r) => r?.executionTimeMs ?? 0
+                                  ) // Par défaut à 0 si `r.executionTimeMs` est nul
+                                : []
+                            }
+                          />
+                        ) : (
+                          <div className="text-center">
+                            Chargement des données...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="m-3">
+                      <h2>
+                        Analyse des Temps d'Exécution ({nbiteration} Iteration
+                        {iterations > 1 ? "s" : ""})
+                      </h2>
+                      <hr />
+                      <table className="table table-bordered mt-4">
+                        <thead>
+                          <tr>
+                            <th scope="col">Critère</th>
+                            <th scope="col">Automate</th>
+                            <th scope="col">egrep</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Moyenne temps exécution</td>
+                            <td>{executionTime}</td>
+                            <td>{executionTimeEgrep}</td>
+                          </tr>
+                          <tr>
+                            <td>Médiane temps exécution</td>
+                            <td>{medianTime}</td>
+                            <td>{medianTimeEgrep}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1408,8 +1617,17 @@ const Automaton = () => {
                       onClick={() => setShowModal(false)}
                     ></button>
                   </Modal.Header>
+
                   <Modal.Body>
-                    <ResultsTable timesearch={timesearch} isKMP={searchkmp} />
+                    {timesearch &&
+                    (timesearch.results?.length > 0 ||
+                      timesearch.egrep?.length > 0) ? (
+                      <ResultsTable timesearch={timesearch} />
+                    ) : (
+                      <div className="text-center">
+                        Chargement des résultats ou aucune donnée disponible
+                      </div>
+                    )}
                   </Modal.Body>
                 </Modal>
               )}
